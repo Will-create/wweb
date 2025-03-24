@@ -1,4 +1,0 @@
-salt  (generate) : 10
-antidel          : true
-ttl              : 3 days
-fs               : https://fs.zapwize.com/upload/{0}?token=m8lx57gwXmgaey5octn81bvtx4brnwaev7&hostname=1
