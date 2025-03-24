@@ -1,7 +1,7 @@
 {
-	"pid": 3876182,
-	"date": "2025-03-22T09:17:09.254Z",
-	"port": "5550",
+	"pid": 3375123,
+	"date": "2025-03-20T05:53:09.188Z",
+	"port": 3000,
 	"ip": "0.0.0.0",
 	"stats": [
 		{
@@ -12,12 +12,12 @@
 				"build": 4098,
 				"app": "1.0.0"
 			},
-			"pid": 3876182,
+			"pid": 3375123,
 			"thread": "",
-			"mode": "debug",
-			"overload": 45,
-			"date": "2025-03-24T07:07:37.694Z",
-			"memory": 198.19,
+			"mode": "release",
+			"overload": 0,
+			"date": "2025-03-24T07:08:25.437Z",
+			"memory": 20.94,
 			"rm": 0,
 			"fm": 0,
 			"wm": 0,
@@ -31,17 +31,17 @@
 			"cm": 0,
 			"dbrm": 0,
 			"dbwm": 0,
-			"usage": 100,
-			"requests": 0,
+			"usage": 0,
+			"requests": 107,
 			"pending": 0,
 			"external": 0,
-			"errors": 498011014,
+			"errors": 1,
 			"timeouts": 0,
 			"online": 0,
-			"uptime": 1611,
+			"uptime": 5836,
 			"download": 0,
-			"upload": 0,
-			"lasterror": "2025-03-24T07:07:37.694Z Error: write EIO\n    at afterWriteDispatched (node:internal/stream_base_commons:159:15)\n    at writeGeneric (node:internal/stream_base_commons:150:3)\n    at Socket._writeGeneric (node:net:971:11)\n    at Socket._write (node:net:983:8)\n    at writeOrBuffer (node:internal/streams/writable:572:12)\n    at _write (node:internal/streams/writable:501:10)\n    at Writable.write (node:internal/streams/writable:510:10)\n    at console.value (node:internal/console/constructor:298:16)\n    at console.log (node:internal/console/constructor:384:26)\n    at process.<anonymous> (/www/www/wweb/node_modules/total4/debug.js:587:86)\n    at process.emit (node:events:530:35)\n    at process._fatalException (node:internal/process/execution:154:25)",
+			"upload": 0.118,
+			"lasterror": "2025-03-20T05:53:46.302Z ReferenceError: Worker is not defined\n    at IP.PUB (/www/www/wweb/definitions/main.js:157:12)\n    at Client.<anonymous> (/www/www/wweb/definitions/main.js:56:6)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
 			"status": []
 		}
 	]
