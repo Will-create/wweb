@@ -1,0 +1,56 @@
+{
+	"routes": [
+		{
+			"method": "POST",
+			"url": "/421950420361/api/message/",
+			"owner": "controller_fs"
+		},
+		{
+			"method": "POST",
+			"url": "/421950420361/api/media/",
+			"owner": "controller_fs"
+		},
+		{
+			"method": "POST",
+			"url": "/instances/create/",
+			"owner": "controller_api"
+		},
+		{
+			"method": "POST",
+			"url": "/config/421950420361/",
+			"owner": "controller_fs"
+		},
+		{
+			"method": "POST",
+			"url": "/rpc/421950420361/",
+			"owner": "controller_fs"
+		},
+		{
+			"method": "POST",
+			"url": "/instances/remove/{phone}/",
+			"owner": "controller_api",
+			"params": "phone:string"
+		},
+		{
+			"method": "POST",
+			"url": "/upload/",
+			"owner": "controller_fs"
+		},
+		{
+			"method": "GET",
+			"url": "/instances/list/",
+			"owner": "controller_api"
+		},
+		{
+			"method": "GET",
+			"url": "/config/421950420361/",
+			"owner": "controller_fs"
+		},
+		{
+			"method": "GET",
+			"url": "/instances/read/{phone}/",
+			"owner": "controller_api",
+			"params": "phone:string"
+		}
+	]
+}
