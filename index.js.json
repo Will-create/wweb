@@ -1,0 +1,48 @@
+{
+	"pid": 3375123,
+	"date": "2025-03-20T05:53:09.188Z",
+	"port": 3000,
+	"ip": "0.0.0.0",
+	"stats": [
+		{
+			"id": null,
+			"version": {
+				"node": "v22.14.0",
+				"total": "4",
+				"build": 4098,
+				"app": "1.0.0"
+			},
+			"pid": 3375123,
+			"thread": "",
+			"mode": "release",
+			"overload": 0,
+			"date": "2025-03-24T07:13:25.450Z",
+			"memory": 20.98,
+			"rm": 0,
+			"fm": 0,
+			"wm": 0,
+			"em": 0,
+			"mm": 0,
+			"om": 0,
+			"dm": 0,
+			"um": 0,
+			"pm": 0,
+			"sm": 0,
+			"cm": 0,
+			"dbrm": 0,
+			"dbwm": 0,
+			"usage": 0,
+			"requests": 107,
+			"pending": 0,
+			"external": 0,
+			"errors": 1,
+			"timeouts": 0,
+			"online": 0,
+			"uptime": 5841,
+			"download": 0,
+			"upload": 0.118,
+			"lasterror": "2025-03-20T05:53:46.302Z ReferenceError: Worker is not defined\n    at IP.PUB (/www/www/wweb/definitions/main.js:157:12)\n    at Client.<anonymous> (/www/www/wweb/definitions/main.js:56:6)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+			"status": []
+		}
+	]
+}
