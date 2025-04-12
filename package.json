@@ -1,16 +1,19 @@
 {
-  "name": "wweb",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "dependencies": {
-    "total4": "^0.0.98",
-    "whatsapp-web.js": "^1.26.0"
-  }
+	"name": "wweb",
+	"version": "1.0.0",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"description": "",
+	"dependencies": {
+		"mongoose": "^8.13.2",
+		"querybuilderpg": "^1.0.24",
+		"total4": "^0.0.98",
+		"whatsapp-web.js": "^1.26.0",
+		"wwebjs-mongo": "^1.1.0"
+	}
 }

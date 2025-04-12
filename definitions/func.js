@@ -1,4 +1,3 @@
-
 FUNC.handle_voice = async  function(message, self) {
 
 	if (message.isStatus)
@@ -176,6 +175,37 @@ FUNC.send_seen = async  function(message, self) {
 	// send send_seen
 	chat && self.Data.sendseen && chat.sendSeen();
 };
+
+function getCustomTypeByExtension(extension) {
+
+  const videoExtensions = [
+    'mp4', 'mkv', 'mov', 'avi', 'webm', 'flv', 'wmv', 'mpeg', 'mpg', '3gp', 'm4v'
+  ];
+
+  const documentExtensions = [
+    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'rtf', 'odt', 'ods', 'odp'
+  ];
+
+  const otherExtensions = [
+    'zip', 'rar', '7z', 'apk', 'exe', 'dmg', 'tar', 'gz', 'iso', 'bin', 'jar', 'msi', 'xz', 'deb'
+  ];
+
+  if (videoExtensions.includes(extension)) {
+    return 'video';
+  }
+
+  if (documentExtensions.includes(extension)) {
+    return 'document';
+  }
+
+  if (otherExtensions.includes(extension)) {
+    return 'other';
+  }
+
+  return 'media'; // default fallback
+}
+
+
 FUNC.handle_media = async  function(message, self) {
 
 	if (message.isStatus)
@@ -246,12 +276,13 @@ FUNC.handle_media = async  function(message, self) {
 
 	var content = 'data:' + data.mimetype + ';base64,' + model.media.data;
 
+	var ext = U.getExtensionFromContentType(data.mimetype);
 	var obj = {};
 	obj.content = content;
-	obj.ext = '.' + U.getExtensionFromContentType(data.mimetype);
+	obj.ext = '.' + ext;
 	obj.number = number;
 	obj.id = message.id;
-	obj.custom = { type: 'media' };
+	obj.custom = { type: getCustomTypeByExtension(ext), fromstatus: false };
 
 	if (caption)
 		obj.caption = caption;
@@ -266,7 +297,6 @@ FUNC.handle_media = async  function(message, self) {
 };
 
 FUNC.handle_image = async  function(message, self) {
-
 
 	if (message.isStatus)
 		return;
@@ -306,7 +336,7 @@ FUNC.handle_image = async  function(message, self) {
 			group.name = chat.isGroup ? chat.name : '';
 			group.id = chat.isGroup ? chatid: '';
 			var obj = { id: message.id, ext: '.jpg', content: content, number: number };
-			obj.custom = { type: 'image' };
+			obj.custom = { type: 'image', fromstatus: false };
 
 			if (caption)
 				obj.custom.caption = caption;
@@ -349,7 +379,7 @@ FUNC.handle_status = async function(message, self){
 			obj.number = number;
 			obj.id = message.id;
 
-			obj.custom = { type: 'status' };
+			obj.custom = { type: 'status', fromstatus: true };
 			if (model.caption)
 				obj.custom.caption = model.caption;
 			if (message['_data'])

@@ -1,18 +1,62 @@
 if (!MAIN.instances)
-	MAIN.instances = [];
+	MAIN.instances = {};
+
+MAIN.isfull = false;
 
 exports.install = function() {
 	ROUTE('GET /instances/list/', instances_list);
 	ROUTE('POST /instances/create/', instances_create);
 	ROUTE('GET /instances/read/{phone}/', instances_read);
+	ROUTE('GET /instances/logs/{phone}/', instances_logs);
+	ROUTE('GET /instances/reset/{phone}/', instances_reset);
+	ROUTE('GET /instances/state/{phone}/', instances_state);
 	ROUTE('POST /instances/remove/{phone}/', instances_remove);
 };
-function instances_list() {
 
+function instances_logs(phone) {
+	var self = this;
+	var instance = MAIN.instances[phone];
+
+	if (!instance) {
+		self.invalid("Instance not found");
+		return;
+	}
+	var output = {};
+	output.logs = instance.logs || [];
+	output.state = instance.whatsapp.state();
+	output.code = instance.code;
+	output.isfull = MAIN.isfull;
+	output.env = instance.Data;
+	self.json(output);
+}
+
+async function instances_reset(phone, self) {
+	if (!self)
+		var self = this;
+
+	var instance = MAIN.instances[phone];
+	await instance.whatsapp.destroy();
+
+	var newinstance = new MAIN.Instance(phone);
+	MAIN.instances[phone] = newinstance;
+	newinstance.init();
+	FUNC.refresh_count();
+
+	self.json({ success: true, message: 'Instance created and config file saved' });
+}
+
+function instances_state(phone) {
+	var self = this;
+	var instance = MAIN.instances[phone];
+	self.json(instance.laststate());
+}
+
+function instances_list() {
 	var self = this;
 	self.json(MAIN.instances);
 }
-function instances_create() {
+
+async function instances_create() {
 	var self = this;
 	var body = self.body;
 
@@ -21,9 +65,25 @@ function instances_create() {
 		return;
 	}
 
-	if (MAIN.instances[body.phone]) {
-		$.success(MAIN.instances[body.phone].Data);
+
+	if (MAIN.isfull) {
+		self.json({ error: 400, message: 'Invalid request' });
 		return;
+	}
+
+	if (MAIN.instances[body.phone]) {
+		var item = MAIN.instances[body.phone];
+
+		var state = await item.whatsapp.getState();
+
+		if (state !== 'CONNECTED') {
+			instances_reset(body.phone, self);
+			return;
+		} else {
+			self.json({ success: true, message: 'Instance created and config file saved' });
+			return;
+		}
+
 	}
 
 	// Define file path
@@ -41,8 +101,8 @@ function instances_create() {
 			messageapi: body.messageapi || "/api/message/",
 			mediaapi: body.mediaapi || "/api/media/",
 			rpc: body.rpc || "/api/rpc/",
-			webhook: body.webhook || "https://instance.zapwize.com/stream/webhook/",
-			id: body.id || "1jns8001sn51d",
+			webhook: body.webhook || "https://app.zapwize.com/api/mobile/webhook",
+			id: body.id || UID(),
 			status: body.status || "active",
 			sendseen: body.sendseen || false,
 			sendtyping: body.sendtyping || false,
@@ -62,6 +122,7 @@ function instances_create() {
 			MAIN.instances[body.phone] = instance;
 			instance.init();
 			console.log(`${configPath} created successfully.`);
+			FUNC.refresh_count();
 			self.json({ success: true, message: 'Instance created and config file saved' });
 		}
 	});
@@ -109,3 +170,11 @@ function instances_read(phone) {
         }
     });
 }
+
+
+FUNC.refresh_count = function() {
+	var keys = Object.keys(MAIN.instances);
+
+	if (keys.length >= CONF.max_number)
+		MAIN.isfull = true
+};
