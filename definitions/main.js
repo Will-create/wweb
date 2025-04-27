@@ -2,18 +2,26 @@ const { Client, LocalAuth, RemoteAuth, WAState } = require('whatsapp-web.js');
 
 async function create_client(id) {
 	return new Promise(async function(resolve, reject) {
-		var opt = { qrMaxRetries: 10, disableMessageHistory: true };
-		//opt.webVersion = '2.2412.50';
-		//opt.webVersionCache = { type: 'remote', remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2409.2.html' };
-		console.log('Browserless: ' + CONF.selfhosted_browserless);
-		opt.puppeteer = { args: [ '--disable-setuid-sandbox', '--no-sandbox'], headless: true, browserWSEndpoint: CONF.selfhosted_browserless };
+		const opt = {
+			// qrMaxRetries: 10,
+			// disableMessageHistory: true,
+			puppeteer:  { 
+				args: [
+				  '--disable-setuid-sandbox', 
+				  '--no-sandbox',
+				  '--disable-web-security',
+				  '--disable-features=IsolateOrigins,site-per-process'
+				], 
+				headless: true, 
+				browserWSEndpoint: CONF.browserless 
+			  }
+		};
+
 		var type = CONF.db_ctype;
 		if (type === "mongo") {
 			const { MongoStore } = require('wwebjs-mongo');
 			const mongoose = require('mongoose');
-
 			await mongoose.connect(CONF.mongosh_uri);
-
 			const store = new MongoStore({ mongoose: mongoose });
 			// Check if session already exists
 			const session = await store.sessionExists({ sessionId: id });
@@ -24,9 +32,7 @@ async function create_client(id) {
 				// Session does not exist, create a new one
 				console.log('Session does not exist, creating a new one');
 			}
-
 			console.log('Session:', session);
-
 			opt.authStrategy = new RemoteAuth({
 				clientId: id,
 				store: store,
@@ -40,7 +46,7 @@ async function create_client(id) {
 			resolve(client);
 		}
 	});
-}
+};
 
 MAIN.Instance = function(phone) {
 	var w = MEMORIZE(phone);
@@ -332,7 +338,7 @@ IP.PUB = function(topic, obj, broker) {
 	var t = this;
 	obj.env = t.Worker.data;
 	obj.topic = topic;
-	console.log('PUB: ' + topic);
+	console.log('PUB: ' + topic, obj.content);
 	t.send(obj);
 };
 
