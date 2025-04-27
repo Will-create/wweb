@@ -1,0 +1,34 @@
+version: "3.9"
+services:
+  node:
+    build: .
+    volumes:
+      - ./:/app
+    working_dir: /app
+    command: "node index.js"
+    restart: always
+    depends_on:
+      - browser
+    ports:
+      - "3000:3000"
+    environment:
+      BROWSER_URL: 'wss://production-sfo.browserless.io/?token=SCF2srzEoY9yaKbdbc1d54f5a29ea3b6a702e756cb'
+  browser:
+    image: browserless/chrome:1-chrome-stable
+    hostname: browser
+    volumes:
+      - ./.wwebjs_auth/session-master/:/usr/src/app/user-data-dir
+    environment:
+      CONNECTION_TIMEOUT: -1
+      KEEP_ALIVE: 'true'
+      WORKSPACE_EXPIRE_DAYS: 1
+      ENABLE_CORS: 'true'
+      CHROME_REFRESH_TIME: 86400000
+      DEFAULT_BLOCK_ADS: 'true'
+      FUNCTION_ENABLE_INCOGNITO_MODE: 'true'
+      ENABLE_XVBF: 'true'
+      CHROME_PATH: '/usr/bin/google-chrome'
+      USE_CHROME_STABLE: 'true'
+      NODE_ENV: 'production'
+      MAX_CONCURRENT_SESSIONS: 1
+      DEFAULT_USER_DATA_DIR: /usr/src/app/user-data-dir

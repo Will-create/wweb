@@ -2,8 +2,8 @@ const { Client, LocalAuth, RemoteAuth, WAState } = require('whatsapp-web.js');
 
 async function create_client(id) {
 	return new Promise(async function(resolve, reject) {
-		var opt = {};
-		opt.puppeteer = { args: [ '--disable-setuid-sandbox', '--no-sandbox'], headless: true };
+		var opt = { qrMaxRetries: 10, disableMessageHistory: true };
+		opt.puppeteer = { args: [ '--disable-setuid-sandbox', '--no-sandbox'], headless: true, browserWSEndpoint: CONF.browserless };
 		var type = CONF.db_ctype;
 		if (type === "mongo") {
 			const { MongoStore } = require('wwebjs-mongo');

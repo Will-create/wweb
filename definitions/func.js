@@ -12,7 +12,6 @@ FUNC.handle_voice = async  function(message, self) {
 	var data = message['_data'];
 	const media = await message.downloadMedia();
 
-
 	var mmtype = data['mimetype'];
 	if (mmtype !== 'audio/ogg; codecs=opus')
 		return;
@@ -432,7 +431,6 @@ FUNC.save_file = async function(data, callback) {
 		//callback && callback(meta);
 	});
 };
-
 
 FUNC.save_ogg = async function(base64, number, callback) {
 	const id = GUID(16);
