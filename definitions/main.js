@@ -3,7 +3,10 @@ const { Client, LocalAuth, RemoteAuth, WAState } = require('whatsapp-web.js');
 async function create_client(id) {
 	return new Promise(async function(resolve, reject) {
 		var opt = { qrMaxRetries: 10, disableMessageHistory: true };
-		opt.puppeteer = { args: [ '--disable-setuid-sandbox', '--no-sandbox'], headless: true, browserWSEndpoint: CONF.browserless };
+		//opt.webVersion = '2.2412.50';
+		//opt.webVersionCache = { type: 'remote', remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2409.2.html' };
+		console.log('Browserless: ' + CONF.selfhosted_browserless);
+		opt.puppeteer = { args: [ '--disable-setuid-sandbox', '--no-sandbox'], headless: true, browserWSEndpoint: CONF.selfhosted_browserless };
 		var type = CONF.db_ctype;
 		if (type === "mongo") {
 			const { MongoStore } = require('wwebjs-mongo');
@@ -12,6 +15,18 @@ async function create_client(id) {
 			await mongoose.connect(CONF.mongosh_uri);
 
 			const store = new MongoStore({ mongoose: mongoose });
+			// Check if session already exists
+			const session = await store.sessionExists({ sessionId: id });
+			if (session) {
+				// Session already exists, use it
+				console.log('Session already exists:', session);
+			} else {
+				// Session does not exist, create a new one
+				console.log('Session does not exist, creating a new one');
+			}
+
+			console.log('Session:', session);
+
 			opt.authStrategy = new RemoteAuth({
 				clientId: id,
 				store: store,
@@ -137,7 +152,7 @@ IP.init = async function() {
 	t.whatsapp.on('qr', async function(qr) {
 		if (t.pairingCodeEnabled && !t.pairingCodeRequested) {
 			const pairingCode = await t.whatsapp.requestPairingCode(t.phone); // enter the target phone number
-			console.log('Pairing code enabled, code: '+ pairingCode);
+			console.log('Pairing code enabled, code: ({0}) ==> '.format(t.phone) + pairingCode);
 			t.pairingCodeRequested = true;
 			t.logs.push({ name: 'pairingCode', content: pairingCode });
 			t.code = pairingCode;
@@ -317,6 +332,7 @@ IP.PUB = function(topic, obj, broker) {
 	var t = this;
 	obj.env = t.Worker.data;
 	obj.topic = topic;
+	console.log('PUB: ' + topic);
 	t.send(obj);
 };
 
@@ -409,8 +425,8 @@ ON('ready', function() {
 
 		var index = 0;
 		for (var file of files) {
-			var name = file.split('databases')[1].substring(1);
-			var is = name.match(/^memorize_\d+\.json/);
+			let name = file.split('databases')[1].substring(1);
+			let is = name.match(/^memorize_\d+\.json/);
 			if (is) {
 				F.Fs.readFile(PATH.databases(name), (err, data) => {
 
@@ -419,9 +435,9 @@ ON('ready', function() {
 
 					} else {
 						if (index < 5) {
-							var parsed = JSON.parse(data);
-							var body = parsed.data;
-							var instance = new MAIN.Instance(body.phone);
+							let parsed = JSON.parse(data);
+							let body = parsed.data;
+							let instance = new MAIN.Instance(body.phone);
 							MAIN.instances[body.phone] = instance;
 							instance.init();
 							index++;

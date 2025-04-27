@@ -13,7 +13,7 @@
 		"mongoose": "^8.13.2",
 		"querybuilderpg": "^1.0.24",
 		"total4": "^0.0.98",
-		"whatsapp-web.js": "^1.26.0",
+		"whatsapp-web.js": "https://github:pedroslopez/whatsapp-web.js#webpack-exodus",
 		"wwebjs-mongo": "^1.1.0"
 	}
 }
