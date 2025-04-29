@@ -1,4 +1,3 @@
-const { RESTBuilder } = require('total4');
 const { Client, LocalAuth, RemoteAuth, WAState } = require('whatsapp-web.js');
 
 async function create_client(id, t) {
@@ -7,13 +6,13 @@ async function create_client(id, t) {
 		var browser = t.browser;
 
 		let conf = {
-			args: [browser ? '--user-data-dir='.browser.datadir : '--user-data-dir=/tmp/chrome/data-dir'],
 			headless: true,
 			stealth: true,
-			timeout: 180000,
+			timeout: 5000,
 		};
 
 		if (browser) {
+			conf.args = [];
 			conf.args.push(`--user-data-dir=${browser.datadir}`);
 		}
 
@@ -23,7 +22,7 @@ async function create_client(id, t) {
 			url = browser.url + '&trackingId=' + id + '&launch=' + JSON.stringify(conf);
 		else {
 			// get from db the cl_browserless of possible browserless urls	
-			var arr = t.db.find('cl_browserless').where('isdisabled', false).promise();
+			var arr = await t.db.find('cl_browserless').where('isdisabled', false).promise();
 			// get random browserless url
 			var randomIndex = Math.floor(Math.random() * arr.length);
 			url = arr[randomIndex].value + '&trackingId=' + id + '&launch=' + JSON.stringify(conf);
@@ -169,11 +168,14 @@ IP.memory_refresh = function (body, callback) {
 IP.init = async function () {
 	var t = this;
 
-	let browser = await t.db.read('tbl_browserless').where('id', data.browserid).promise();
-
-	if (browser)
-		t.browser = browser
-
+	if (t.browserid) {
+		var browser = await t.db.read('cl_browserless').id(t.browserid).promise();
+		if (browser) {
+			t.browser = browser;
+			t.memorize.data.browser = browser;
+			t.memorize.save();
+		}
+	}
 
 	t.whatsapp = await create_client(t.phone, t);
 
@@ -186,6 +188,7 @@ IP.init = async function () {
 				// try to check if remote browser has been successfully created
 				var sessionurl = cl.baseurl + '/session/?token=' + cl.token;
 				RESTBuilder.GET(sessionurl).callback(function (err, sessions) {
+					console.log('Browserless session: ' + sessions);
 					if (sessions) {
 						var browser = sessions.findItem('type', 'browser');
 						var page = sessions.findItem('type', 'page');
@@ -197,10 +200,12 @@ IP.init = async function () {
 							data.id = browser.id;
 							data.url = cl.url
 							data.type = cl.type;
+							data.hostname = cl.baseurl;
 							data.datadir = browser.datadir;
 							data.killurl = browser.killurl;
 							data.dtcreated = NOW;
 							t.db.insert('cl_browserless', data).promise();
+							t.browserid = browser.id;
 							t.browser = browser;
 							t.memorize.data.browser = browser;
 							t.memorize.data.cl = cl;
@@ -521,8 +526,6 @@ IP.save_file = async function (data, callback) {
 
 IP.onservice = function () {
 	var t = this;
-
-
 	// we check some metrics about the remote browser cl.baseurl + 'metrics/total' + cl.token
 	if (t.browser) {
 		var cl = t.memorize.data.cl;
