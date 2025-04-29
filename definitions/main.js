@@ -1,3 +1,4 @@
+const { RESTBuilder } = require('total4');
 const { Client, LocalAuth, RemoteAuth, WAState } = require('whatsapp-web.js');
 
 async function create_client(id) {
@@ -86,6 +87,13 @@ MAIN.Instance = function(phone) {
 
 var IP = MAIN.Instance.prototype;
 
+
+IP.notify = function (obj) {
+	var t = this;
+	console.log('NOTIFICATION: ' + topic, obj.title);
+	RESTBuilder.POST(CONF.notify.format(obj.topic), { title: obj.title }).keepalive().callback(NOOP);
+}
+
 IP.save_revoked = async function (data) {
 	var t = this;
 	var content = data.content;
@@ -104,9 +112,6 @@ IP.save_revoked = async function (data) {
 		chat.dtcreated = NOW;
 		await t.db.insert('tbl_chat', chat).promise();
 	};
-
-	
-
 	var message = {};
 	message.id = UID();
 	message.chatid = chat.id;
@@ -120,9 +125,9 @@ IP.save_revoked = async function (data) {
 	await t.db.update('tbl_chat', { '+unread': 1, '+msgcount': 1 }).id(chat.id).promise();
 	// send push notification
 	var obj = {};
-	obj.topic = 'revoked/' + content.chatid;
+	obj.topic = 'revoked-' + t.phone;
 	obj.title = user.pushname;
-
+	t.notify(obj);
 };
 
 IP.laststate = function() {
