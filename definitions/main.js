@@ -90,9 +90,8 @@ var IP = MAIN.Instance.prototype;
 
 IP.notify = function (obj) {
 	var t = this;
-	console.log('NOTIFICATION: ' + topic, obj.title);
 	RESTBuilder.POST(CONF.notify.format(obj.topic), { title: obj.title }).keepalive().callback(NOOP);
-}
+};
 
 IP.save_revoked = async function (data) {
 	var t = this;
