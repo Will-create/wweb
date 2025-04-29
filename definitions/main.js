@@ -2,21 +2,37 @@ const { Client, LocalAuth, RemoteAuth, WAState } = require('whatsapp-web.js');
 
 async function create_client(id) {
 	return new Promise(async function(resolve, reject) {
+
+
+const launchArgs = JSON.stringify({
+	args: [`--user-data-dir=/tmp/chrome/data-dir`],
+	headless: true,
+	stealth: true,
+	timeout: 5000,
+  });
+
+  const launchArgs2 = JSON.stringify({
+	args: [`--user-data-dir=/tmp/chrome/data-dir`],
+	headless: true,
+	stealth: true,
+	timeout: 5000,
+  });
 		const opt = {
 			// qrMaxRetries: 10,
 			// disableMessageHistory: true,
 			puppeteer:  { 
 				args: [
 				  '--disable-setuid-sandbox', 
-				  '--no-sandbox',
-				  '--disable-web-security',
-				  '--disable-features=IsolateOrigins,site-per-process'
+				  '--no-sandbox'
 				], 
 				headless: true, 
-				browserWSEndpoint: CONF.browserless 
+				browserWSEndpoint: CONF.selfhosted_browserless + '&trackingId=' + id,
+				// browserWSEndpoint: CONF.selfhosted_browserless + '&trackingId=' + id + '&launch=' + launchArgs,
+				// browserWSEndpoint: CONF.browserless + '&trackingId=' + id + '&launchArgs=' + launchArgs,
+				// browserURL: CONF.selfhosted_browserless 
 			  }
 		};
-
+		console.log('browserWSEndpoint:', CONF.selfhosted_browserless + '&trackingId=' + id);
 		var type = CONF.db_ctype;
 		if (type === "mongo") {
 			const { MongoStore } = require('wwebjs-mongo');
@@ -60,6 +76,7 @@ MAIN.Instance = function(phone) {
 	t.id = data.id;
 	t.logs = [{ name: 'instance_created', content: true }];
 
+	t.db = DB();
 	t.code = '';
 	t.pairingCodeEnabled = t.phone && t.Data.mode == 'code' ? true : false;
 	t.pairingCodeRequested = false;
@@ -80,7 +97,7 @@ IP.save_revoked = async function (data) {
 
 	if (!chat) {
 		chat = {};
-		chat.id = user.number;
+		chat.id = UID();
 		chat.numberid = number.id;
 		chat.value = user.phone;
 		chat.displayname = user.pushname;
@@ -88,16 +105,24 @@ IP.save_revoked = async function (data) {
 		await t.db.insert('tbl_chat', chat).promise();
 	};
 
+	
+
 	var message = {};
 	message.id = UID();
 	message.chatid = chat.id;
 	message.type = content.type;
-	message.value = content.value;
+	message.value = message.content = content.content;
 	message.caption = content.caption;
 	message.isviewonce = false;
 	message.dtcreated = NOW;
+	message.kind = content.type == 'edited' ? 'edited' : 'revoked';
 	await t.db.insert('tbl_message', message).promise();
 	await t.db.update('tbl_chat', { '+unread': 1, '+msgcount': 1 }).id(chat.id).promise();
+	// send push notification
+	var obj = {};
+	obj.topic = 'revoked/' + content.chatid;
+	obj.title = user.pushname;
+
 };
 
 IP.laststate = function() {
@@ -137,6 +162,15 @@ IP.init = async function() {
 
 	t.whatsapp = await create_client(t.phone);
 
+	var number = await t.db.read('tbl_number').where('phonenumber', t.phone).promise();
+
+	if (!number) {
+		number = {};
+		number.id = UID();
+		number.phonenumber = t.phone;
+		number.dtcreated = NOW;
+		await t.db.insert('tbl_number', number).promise();
+	}
 	// Listen to whatsapp events
 	t.whatsapp.on('message', (message) => FUNC.handle_status(message, t));
 	t.whatsapp.on('message', (message) => FUNC.send_seen(message, t));
@@ -221,12 +255,14 @@ IP.init = async function() {
 						response.user = user;
 						response.group = group;
 						response.type = meta.custom.type,
-							response.chatid = chatid;
+						response.chatid = chatid;
+						response.content = response.url;
 						response.number = number;
 						response.caption = meta.custom.caption;
 						t.PUB('message_revoke_everyone', { env: t.Worker.data, content: response });
 						//t.ask(number, chatid, response, meta.custom.type, isgroup, istag, user, group);
-
+						// save_revoked
+						await t.save_revoked({ content: response, env: t.Worker.data });
 
 					});
 				});
@@ -240,12 +276,17 @@ IP.init = async function() {
 				res.content = before.body;
 				console.log(res);
 				t.PUB('message_revoke_everyone', { env: t.Worker.data, content: res });
+				await t.save_revoked({ content: res, env: t.Worker.data });
 			}
 		}
 	});
 
 	t.whatsapp.on('message_edit', async function(message, newbody, prevbody) {
-		t.PUB('message_edit', { content: { newbody, prevbody } });
+		message.body = newbody + ' (edited)' + prevbody;
+		FUNC.handle_textonly2(message, t, async function(obj) {
+			// save_revoked
+			await t.save_revoked({ content: obj, env: t.Worker.data });
+		});
 	});
 
 
