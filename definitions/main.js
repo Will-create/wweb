@@ -1,5 +1,18 @@
 const { Client, LocalAuth, RemoteAuth, WAState } = require('whatsapp-web.js');
 
+
+
+function replaceHostname(urlString, newHostname) {
+	try {
+	  const url = new URL(urlString); // Parse the URL
+	  url.hostname = newHostname;     // Replace the hostname
+	  return url.toString();           // Return the updated URL
+	} catch (error) {
+	  console.error('Invalid URL:', error);
+	  return null;
+	}
+}
+
 async function create_client(id, t) {
 	return new Promise(async function (resolve, reject) {
 
@@ -8,24 +21,26 @@ async function create_client(id, t) {
 		let conf = {
 			headless: true,
 			stealth: true,
-			timeout: 5000,
+			keepAlive: true,
 		};
 
-		if (browser) {
-			conf.args = [];
-			conf.args.push(`--user-data-dir=${browser.datadir}`);
-		}
+		// if (browser) {
+		// 	conf.args = [];
+		// 	conf.args.push(`--user-data-dir=${browser.datadir}`);
+		// }
 
+		conf.args = [];
+		conf.args.push(`--user-data-dir=~/${id}`);
 		let url;
-
-		if (browser)
-			url = browser.url + '&trackingId=' + id + '&launch=' + JSON.stringify(conf);
+		let timeout = '999999999';
+		if (t.memorize.data.cl)
+			url = t.memorize.data.cl.url + '&ttl=999999999&timeout=' + timeout + '&trackingId=' + id + '&launch=' + JSON.stringify(conf);
 		else {
 			// get from db the cl_browserless of possible browserless urls	
 			var arr = await t.db.find('cl_browserless').where('isdisabled', false).promise();
 			// get random browserless url
 			var randomIndex = Math.floor(Math.random() * arr.length);
-			url = arr[randomIndex].value + '&trackingId=' + id + '&launch=' + JSON.stringify(conf);
+			url = arr[randomIndex].value  + '&ttl=999999999&timeout=' + timeout + '&trackingId=' + id + '&launch=' + JSON.stringify(conf);
 			var cl = {};
 			cl.baseurl = arr[randomIndex].baseurl;
 			cl.type = arr[randomIndex].type;
@@ -180,47 +195,7 @@ IP.init = async function () {
 	t.whatsapp = await create_client(t.phone, t);
 
 	// Now try to resolve browser if still not set
-
-	if (!t.browser) {
-		setTimeout(function () {
-			var cl = t.memorize.data.cl;	
-			if (cl) {
-				// try to check if remote browser has been successfully created
-				var sessionurl = cl.baseurl + '/session/?token=' + cl.token;
-				RESTBuilder.GET(sessionurl).callback(function (err, sessions) {
-					console.log('Browserless session: ' + sessions);
-					if (sessions) {
-						var browser = sessions.findItem('type', 'browser');
-						var page = sessions.findItem('type', 'page');
-
-						// check if browser exists and page.title includes 'WhatsApp'
-
-						if (browser && page && page.title.includes('WhatsApp')) {
-							var data = {};
-							data.id = browser.id;
-							data.url = cl.url
-							data.type = cl.type;
-							data.hostname = cl.baseurl;
-							data.datadir = browser.datadir;
-							data.killurl = browser.killurl;
-							data.dtcreated = NOW;
-							t.db.insert('cl_browserless', data).promise();
-							t.browserid = browser.id;
-							t.browser = browser;
-							t.memorize.data.browser = browser;
-							t.memorize.data.cl = cl;
-							t.memorize.save();
-							//console.log('Browserless session created: ' + t.phone);
-							t.PUB('browserless', { env: t.Worker.data, content: browser });
-							console.log('Browserless session created: ' + t.phone);
-						}
-					} else {
-						console.log('Browserless session not created: ' + t.phone);
-					}
-				});
-			}
-		}, 5000);
-	}
+	
 	var number = await t.db.read('tbl_number').where('phonenumber', t.phone).promise();
 
 	if (!number) {
@@ -276,6 +251,7 @@ IP.init = async function () {
 
 	t.whatsapp.on('authenticated', () => {
 		t.logs.push({ name: 'authenticated', content: true });
+		t.save_session();
 		t.PUB('authenticated', { env: t.Worker.data });
 	});
 
@@ -448,6 +424,52 @@ IP.PUB = function (topic, obj, broker) {
 	t.send(obj);
 };
 
+
+IP.save_session = async function() {
+	var t = this;
+	var cl = t.memorize.data.cl;	
+			if (cl) {
+				// try to check if remote browser has been successfully created
+				var sessionurl = cl.baseurl + 'sessions/?token=' + cl.token;
+				console.log('Browserless session url: ' + sessionurl);
+				var page;
+				var browser;
+				RESTBuilder.GET(sessionurl).callback(function (err, sessions) {
+					console.log('Browserless session: ' + sessions);
+						sessions && sessions.wait(async function(item, next) {
+							if (item.type == 'browser' && item.trackingId == t.phone && item.running) 
+								browser = item;
+							
+							if (item.type == 'page' && item.trackingId == t.phone && item.title.includes('WhatsApp'))
+								page = item;
+							
+							next();
+						}, async function()	{
+							if (browser && page) {
+								var data = {};
+								data.id = browser.id;
+								data.url = cl.url
+								data.type = cl.type;
+								data.hostname = cl.baseurl;
+								data.datadir = browser.userDataDir;
+								data.killurl = replaceHostname(browser.killURL, cl.baseurl);
+								data.dtcreated = NOW;
+								await t.db.insert('tbl_browserless', data).promise();
+								t.browserid = browser.id;
+								t.browser = browser;
+								t.memorize.data.browser = browser;
+								t.memorize.data.cl = cl;
+								t.memorize.save();
+								//console.log('Browserless session created: ' + t.phone);
+								t.PUB('browserless', { env: t.Worker.data, content: browser });
+								console.log('Browserless session created: ' + t.phone);
+							}
+						});
+						// check if browser exists and page.title includes 'WhatsApp'
+
+				});
+			}
+}
 IP.ask = async function (number, chatid, content, type, isgroup, istag, user, group) {
 	var t = this;
 	const obj = {
@@ -529,7 +551,7 @@ IP.onservice = function () {
 	// we check some metrics about the remote browser cl.baseurl + 'metrics/total' + cl.token
 	if (t.browser) {
 		var cl = t.memorize.data.cl;
-		var url = cl.baseurl + 'metrics/total' + cl.token;
+		var url = cl.baseurl + 'metrics/total/?token=' + cl.token;
 		RESTBuilder.GET(url).callback(async function (err, data) {
 			if (data) {
 				// update browserless data in db
