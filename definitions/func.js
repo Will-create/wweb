@@ -169,6 +169,80 @@ FUNC.handle_textonly = async  function(message, self) {
 	message.body && self.ask(number, chatid, message.body, 'text', isgroup, istag, user, group);
 };
 
+
+FUNC.handle_textonly2 = async  function(message, self, callback) {
+
+	var quoted;
+	if (message.hasMedia)
+		return;
+
+	if (message.isStatus)
+		return;
+
+
+	var chatid = message.from;
+	var chat = await message.getChat();
+	var contact = await message.getContact();
+	var number = message.from.split('@')[0];
+	var mentions = await message.getMentions() || false;
+	var istag = false;
+	var isgroup = chat.isGroup;
+	var forme = false;
+	var user = {};
+	var group = {};
+
+	for (var m of mentions) {
+		if (m.isMe)
+			istag = true;
+	}
+
+	var data = message['_data'];
+	var qm = await message.getQuotedMessage();
+	if (message.hasQuotedMsg) {
+		quoted = data.quotedMsg.body;
+
+		if (qm.fromMe)
+			forme = true;
+
+		if (quoted)
+			quoted = quoted.substring(0, 2200) + ' ...';
+
+		if (quoted)
+			message.body = '"{0}": \n\n\n\n{1}'.format(quoted, message.body);
+	}
+
+	if (isgroup && message.hasQuotedMsg && forme)
+		istag = true;
+
+	if (isgroup && istag)
+		self.Data.sendtyping && chat.sendStateTyping();
+
+
+	if (!isgroup)
+		self.Data.sendtyping && chat.sendStateTyping();
+
+	user.id = isgroup ? message.author : message.from;
+	user.name = contact.name;
+	user.pushname = contact.pushname;
+	user.shortname = contact.shortname;
+	user.number = contact.number;
+	user.countrycode = await  FUNC.getCountryCode(number);
+
+	group.name = chat.isGroup ? chat.name : '';
+	group.id = chat.isGroup ? chatid: '';
+
+	const obj = {
+		content: message.body,
+		number: number,
+		chatid: chatid,
+		type: 'edited',
+		isgroup: isgroup,
+		istag: istag,
+		user: user,
+		group: group
+	};
+	message.body && callback(obj);
+};
 FUNC.send_seen = async  function(message, self) {
 	var chat = await message.getChat();
 	// send send_seen
