@@ -14,7 +14,48 @@ POST http://207.180.216.254:3043/instances/create
 	"token": "03s37v4eYhclEzruPuptBjl4588mIfgjUw2"
 }
 
-GET http://207.180.216.254:3043/instances/logs/22656920671
+GET http://207.180.216.254:3043/instances/logs/421950420361
+
+GET http://207.180.216.254:3043/api/config/421950420361
+
+POST http://207.180.216.254:3043/api/rpc/421950420361
+{
+	"topic": "ping"
+}
+
+POST http://207.180.216.254:3043/api/rpc/421950420361
+{
+	"topic": "state"
+}
+POST http://207.180.216.254:3043/api/rpc/421950420361
+{
+	"topic": "logs"
+}
+
+POST http://207.180.216.254:3043/api/rpc/421950420361
+{
+	"topic": "logout"
+}
+
+
+POST http://207.180.216.254:3043/api/rpc/421950420361
+{
+	"topic": "reset"
+}
+
+POST http://207.180.216.254:3043/api/message/421950420361
+{
+	"chatid": "22656920671",
+	"content": "https://antidel.com"
+}
+
+
+POST http://207.180.216.254:3043/api/media/421950420361
+{
+	"chatid": "22656920671",
+	"url": "https://fs.zapwize.com/files/22656920671/1n233001ri51d-od.jpg",
+	"caption": "This is the document"
+}
 
 
 POST http://207.180.216.254:3043/instances/create

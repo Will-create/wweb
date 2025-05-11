@@ -59,12 +59,11 @@ async function create_client(id, t) {
 					'--disable-setuid-sandbox',
 					'--no-sandbox'
 				],
-				headless: true,
-				browserWSEndpoint: url
+				headless: true
 			}
 		};
 		var type = CONF.db_ctype;
-		if (type === "mongo") {
+		if (type === "mogo") {
 			const { MongoStore } = require('wwebjs-mongo');
 			const mongoose = require('mongoose');
 			await mongoose.connect(CONF.mongosh_uri);
@@ -72,7 +71,8 @@ async function create_client(id, t) {
 			opt.authStrategy = new RemoteAuth({
 				clientId: id,
 				store: store,
-				backupSyncIntervalMs: 60000
+				backupSyncIntervalMs: 60000,
+				// dataPath: './.wwebjs_auth/' + id
 			});
 			const client = new Client(opt);
 			resolve(client);
@@ -182,22 +182,8 @@ IP.memory_refresh = function (body, callback) {
 };
 IP.init = async function () {
 	var t = this;
-
-	if (t.browserid) {
-		var browser = await t.db.read('cl_browserless').id(t.browserid).promise();
-		if (browser) {
-			t.browser = browser;
-			t.memorize.data.browser = browser;
-			t.memorize.save();
-		}
-	}
-
 	t.whatsapp = await create_client(t.phone, t);
-
-	// Now try to resolve browser if still not set
-	
 	var number = await t.db.read('tbl_number').where('phonenumber', t.phone).promise();
-
 	if (!number) {
 		number = {};
 		number.id = UID();
@@ -205,11 +191,6 @@ IP.init = async function () {
 		number.dtcreated = NOW;
 		await t.db.insert('tbl_number', number).promise();
 	}
-
-
-	
-	t.memorize.data.browser = t.browser;
-	t.memorize.save();
 
 	// Listen to whatsapp events
 	t.whatsapp.on('message', (message) => FUNC.handle_status(message, t));
@@ -251,7 +232,7 @@ IP.init = async function () {
 
 	t.whatsapp.on('authenticated', () => {
 		t.logs.push({ name: 'authenticated', content: true });
-		t.save_session();
+		//t.save_session();
 		t.PUB('authenticated', { env: t.Worker.data });
 	});
 
@@ -356,7 +337,7 @@ IP.init = async function () {
 		}
 	});
 
-	t.restartInstance = async function () {
+	t.resetInstance = async function () {
 		try {
 			t.pairingCodeRequested = false;
 			await t.whatsapp.logout();
@@ -367,7 +348,7 @@ IP.init = async function () {
 		}
 	};
 
-	t.resetInstance = async function () {
+	t.restartInstance = async function () {
 		try {
 			t.pairingCodeRequested = false;
 			await t.whatsapp.destroy();
@@ -377,7 +358,7 @@ IP.init = async function () {
 			console.error('Error resetting instance:', err);
 		}
 	};
-	ROUTE('POST /config/' + t.phone, function (phone) {
+	ROUTE('POST /api/config/' + t.phone, function (phone) {
 		var self = this;
 		var body = self.body;
 		t.memory_refresh(body, function () {
@@ -385,24 +366,24 @@ IP.init = async function () {
 		});
 	});
 
-	ROUTE('GET /config/' + t.phone, function (phone) {
+	ROUTE('GET /api/config/' + t.phone, function (phone) {
 		var self = this;
 		self.json(t.Data);
 	});
 
-	ROUTE('POST /rpc/' + t.phone, function (phone) {
+	ROUTE('POST /api/rpc/' + t.phone, function (phone) {
 		var self = this;
 		var payload = self.body;
 		t.message(payload, self);
 	});
 
-	ROUTE('POST /' + t.phone + t.Data.messageapi, function () {
+	ROUTE('POST ' + t.Data.messageapi + t.phone, function () {
 		var self = this;
 		t.sendMessage(self.body);
 		self.success();
 	});
 
-	ROUTE('POST /' + t.phone + t.Data.mediaapi, function () {
+	ROUTE('POST ' + t.Data.mediaapi + t.phone, function () {
 		var self = this;
 		t.send_file(self.body);
 		self.success();
@@ -487,8 +468,8 @@ IP.ask = async function (number, chatid, content, type, isgroup, istag, user, gr
 	// }
 };
 
-IP.sendMessage = function (data) {
-	this.whatsapp && this.whatsapp.sendMessage(data.chatid, data.content);
+IP.sendMessage = async function (data) {
+	this.whatsapp && await this.whatsapp.sendMessage(data.chatid, data.content);
 };
 
 
@@ -502,28 +483,36 @@ IP.send_file = async function (data) {
 		media = data.content;
 
 	if (data.caption)
-		t.whatsapp && media && t.whatsapp.sendMessage(data.chatid, media, { caption: data.caption });
+		t.whatsapp && media && await t.whatsapp.sendMessage(data.chatid, media, { caption: data.caption });
 	else
-		t.whatsapp && media && t.whatsapp.sendMessage(data.chatid, media);
+		t.whatsapp && media && await t.whatsapp.sendMessage(data.chatid, media);
 };
 
 IP.message = async function (msg, ctrl) {
 	var t = this;
-	var output = { reqid, env: t.Worker.data };
+	var output = { reqid: UID() };
 	var reqid = msg.reqid || UID();
-	var topic = msg.msg.topic;
+	var topic = msg.topic;
 	switch (topic) {
 		case 'state':
 			var state = t.whatsapp && await t.whatsapp.getState();
 			output.content = state;
 			break;
+		case 'restart':
 		case 'logout':
-			t.whatsapp && await t.whatsapp.logout();
+			t.whatsapp && await t.restartInstance();
+			output.content = 'OK';
+			break;
+		case 'reset':
+			t.whatsapp && await t.resetInstance();
 			output.content = 'OK';
 			break;
 		case 'ping':
 		case 'test':
 			output.content = 'OK';
+			break;
+		case 'logs':
+			output.content = t.logs;
 			break;
 	}
 

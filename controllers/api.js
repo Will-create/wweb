@@ -23,7 +23,7 @@ function instances_logs(phone) {
 	}
 	var output = {};
 	output.logs = instance.logs || [];
-	output.state = instance.whatsapp.state();
+	output.state = instance.whatsapp.getState();
 	output.code = instance.code;
 	output.isfull = MAIN.isfull;
 	output.env = instance.Data;
