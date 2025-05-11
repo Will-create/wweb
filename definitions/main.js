@@ -2,8 +2,8 @@ const { Client, LocalAuth, RemoteAuth, WAState } = require('whatsapp-web.js');
 
 async function create_client(id) {
 	return new Promise(async function(resolve, reject) {
-		var opt = {};
-		opt.puppeteer = { args: [ '--disable-setuid-sandbox', '--no-sandbox'], headless: true };
+		var opt = { qrMaxRetries: 10, disableMessageHistory: true };
+		opt.puppeteer = { args: [ '--disable-setuid-sandbox', '--no-sandbox'], headless: true};
 		var type = CONF.db_ctype;
 		if (type === "mongo") {
 			const { MongoStore } = require('wwebjs-mongo');
@@ -183,7 +183,6 @@ IP.init = async function() {
 			var user = {};
 			var group = {};
 			var fs = FILESTORAGE(number);
-
 			user.id = isgroup ? before.author : before.from;
 			user.name = contact.name;
 			user.pushname = contact.pushname;

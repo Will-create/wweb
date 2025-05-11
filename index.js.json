@@ -1,23 +1,23 @@
 {
-	"pid": 3811473,
-	"date": "2025-03-22T03:05:03.119Z",
-	"port": "--restart",
+	"pid": 120890,
+	"date": "2025-04-26T17:40:36.521Z",
+	"port": "3043",
 	"ip": "0.0.0.0",
 	"stats": [
 		{
 			"id": null,
 			"version": {
-				"node": "v22.14.0",
+				"node": "v16.20.2",
 				"total": "4",
 				"build": 4098,
 				"app": "1.0.0"
 			},
-			"pid": 3811473,
+			"pid": 120890,
 			"thread": "",
 			"mode": "debug",
-			"overload": 24,
-			"date": "2025-04-12T19:15:38.761Z",
-			"memory": 22.59,
+			"overload": 26,
+			"date": "2025-05-11T11:22:32.554Z",
+			"memory": 30.59,
 			"rm": 0,
 			"fm": 0,
 			"wm": 0,
@@ -38,7 +38,7 @@
 			"errors": 0,
 			"timeouts": 0,
 			"online": 0,
-			"uptime": 31207,
+			"uptime": 21222,
 			"download": 0,
 			"upload": 0,
 			"status": []
