@@ -53,7 +53,16 @@ function instances_state(phone) {
 
 function instances_list() {
 	var self = this;
-	self.json(MAIN.instances);
+	let output = [];
+
+
+	for (var key in MAIN.instances) {
+		let instance = MAIN.instances[key];
+		if (instance && instance.Data);
+			output.push(instance.Data);
+
+	}
+	self.json(output);
 }
 
 async function instances_create() {

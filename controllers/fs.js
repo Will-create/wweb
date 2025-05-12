@@ -1,7 +1,24 @@
 exports.install = function() {
 	ROUTE('POST /upload/ @upload <5MB', upload);
 	ROUTE('FILE /download/{db}/*.*', download);
+
+	ROUTE('#401', function()             {
+		respond(this, 401,                   'Unauthorized request');
+	});
+
+	ROUTE('#404', function()             {
+		respond(this, 404,                   'Ressource not found');
+	});
+
+	ROUTE('#400', function()             {
+		respond(this, 400,                   'Bad Request');
+	});
+
 };
+
+function respond(self, code, message) {
+	self.json({success: false, code: code, value: message});
+}
 
 
 async function upload($) {

@@ -6,7 +6,7 @@ mobile: token
 
 
 
-GET http://207.180.216.254:3000/instances/list
+GET http://207.180.216.254:3043/instances/list
 
 POST http://207.180.216.254:3043/instances/create
 {
@@ -45,15 +45,14 @@ POST http://207.180.216.254:3043/api/rpc/421950420361
 
 POST http://207.180.216.254:3043/api/message/421950420361
 {
-	"chatid": "22656920671",
+	"chatid": "22656920671@c.us",
 	"content": "https://antidel.com"
 }
 
-
 POST http://207.180.216.254:3043/api/media/421950420361
 {
-	"chatid": "22656920671",
-	"url": "https://fs.zapwize.com/files/22656920671/1n233001ri51d-od.jpg",
+	"chatid": "22656920671@c.us",
+	"url": "https://fs.zapwize.com/files/421950420361/1mfsz001sh51d-tj.mp4",
 	"caption": "This is the document"
 }
 

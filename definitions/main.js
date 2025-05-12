@@ -1,7 +1,4 @@
-const { Client, LocalAuth, RemoteAuth, WAState } = require('whatsapp-web.js');
-
-
-
+const { Client, LocalAuth, MessageMedia, RemoteAuth, WAState } = require('whatsapp-web.js');
 function replaceHostname(urlString, newHostname) {
 	try {
 	  const url = new URL(urlString); // Parse the URL
@@ -52,18 +49,20 @@ async function create_client(id, t) {
 		}
 
 		const opt = {
-			// qrMaxRetries: 10,
-			// disableMessageHistory: true,
+			qrMaxRetries: 10,
+			disableMessageHistory: true,
 			puppeteer: {
 				args: [
 					'--disable-setuid-sandbox',
 					'--no-sandbox'
 				],
+				executablePath: '/usr/bin/google-chrome',
 				headless: true
 			}
 		};
+
 		var type = CONF.db_ctype;
-		if (type === "mogo") {
+		if (type === "mongo") {
 			const { MongoStore } = require('wwebjs-mongo');
 			const mongoose = require('mongoose');
 			await mongoose.connect(CONF.mongosh_uri);
@@ -77,14 +76,14 @@ async function create_client(id, t) {
 			const client = new Client(opt);
 			resolve(client);
 		} else {
-			opt.authStrategy = new LocalAuth({ dataPath: './.wwebjs_auth/' + id });
+			opt.authStrategy = new LocalAuth({ dataPath: './.wwebjs_auth/' + id, clientId: id });
 			var client = new Client(opt);
 			resolve(client);
 		}
 	});
 };
 
-MAIN.Instance = function (phone) {
+MAIN.Instance = function (phone, origin = 'zapwize') {
 	var t = this;
 	t.db = DB();
 
@@ -96,8 +95,13 @@ MAIN.Instance = function (phone) {
 	t.Worker = w;
 	t.Data = t.Worker.data;
 	t.id = data.id;
+	t.ip = CONF.ip;
+	t.port = CONF.port;
 	t.logs = [{ name: 'instance_created', content: true }];
 	t.code = '';
+	t.origin = origin;
+	t.qrcode = '';
+	t.ws_clients = {};
 	t.pairingCodeEnabled = t.phone && t.Data.mode == 'code' ? true : false;
 	t.pairingCodeRequested = false;
 
@@ -106,6 +110,15 @@ MAIN.Instance = function (phone) {
 
 var IP = MAIN.Instance.prototype;
 
+// get code from whatsapp
+IP.get_code = function (phone) {
+	var t = this;
+	if (t.pairingCodeEnabled && !t.pairingCodeRequested) {
+		t.PUB('code', { env: t.Worker.data, content: t.code });
+	} else {
+		t.PUB('qr', { env: t.Worker.data, content: t.qrcode });
+	}
+};
 
 IP.notify = function (obj) {
 	var t = this;
@@ -158,12 +171,19 @@ IP.send = function (obj) {
 	var t = this;
 	if (!obj.env)
 		obj.env = t.Data;
-
 	obj.env.phone = t.phone;
 	obj.type = 'event';
 	//console.log(this);
 	if (t.Data.webhook) {
 		RESTBuilder.POST(t.Data.webhook, obj).header('x-token', t.Data.token).header('token', t.Data.token).callback(NOOP);
+	}
+
+	if (t.origin == 'zapwize') {
+		// send to ws_clients
+		for (var key in t.ws_clients) {
+			var client = t.ws_clients[key];
+			client.send(obj);
+		}
 	}
 };
 
@@ -180,6 +200,8 @@ IP.memory_refresh = function (body, callback) {
 	t.Worker = MEMORIZE(t.phone);
 	callback && callback();
 };
+
+
 IP.init = async function () {
 	var t = this;
 	t.whatsapp = await create_client(t.phone, t);
@@ -188,8 +210,16 @@ IP.init = async function () {
 		number = {};
 		number.id = UID();
 		number.phonenumber = t.phone;
+		upd.url = 'ws://' + t.ip + ':' + t.port;
+		upd.token = t.Data.token;
 		number.dtcreated = NOW;
 		await t.db.insert('tbl_number', number).promise();
+	} else {
+		let upd = {};
+		upd.url = 'ws://' + t.ip + ':' + t.port;
+		upd.token = t.Data.token;
+		upd.dtupdated = NOW;
+		await t.db.update('tbl_insert', upd).where('phonenumber', t.phone).promise();'' 
 	}
 
 	// Listen to whatsapp events
@@ -201,16 +231,20 @@ IP.init = async function () {
 	//t.whatsapp.on('message', (message) => FUNC.handle_contact(message, t));
 	t.whatsapp.on('message', (message) => FUNC.handle_image(message, t));
 	t.whatsapp.on('ready', () => {
-		CALL('Client --> info').callback(function (err, info) {
+		CALL('Client --> info').callback(async function (err, info) {
 			var model = {};
 			model.data = info;
 			t.PUB('whatsapp_ready', model);
+			t.state = await t.whatsapp.getState();
 			t.logs.push({ name: 'whatsapp_ready', content: true });
 			// CONF.antidel && t.whatsapp && t.whatsapp.sendMessage(t.phone + '@c.us', 'Integration OK');
 		});
 	});
 
 	t.whatsapp.on('qr', async function (qr) {
+		t.qrcode = qr;
+
+	
 		if (t.pairingCodeEnabled && !t.pairingCodeRequested) {
 			const pairingCode = await t.whatsapp.requestPairingCode(t.phone); // enter the target phone number
 			console.log('Pairing code enabled, code: ({0}) ==> '.format(t.phone) + pairingCode);
@@ -227,7 +261,7 @@ IP.init = async function () {
 
 	t.whatsapp.on('loading_screen', (percent, message) => {
 		t.logs.push({ name: 'loading_screen', content: percent });
-		t.PUB('loading_screen', { env: t.Worker.data, content: message + '|' + percent });
+		t.PUB('loading_screen', { env: t.Worker.data, content: percent + '%' });
 	});
 
 	t.whatsapp.on('authenticated', () => {
@@ -314,7 +348,6 @@ IP.init = async function () {
 	t.whatsapp.on('change_state', async (state) => {
 		console.log(`WhatsApp state changed: ${state}`);
 		t.PUB('change_state', { content: state });
-
 		switch (state) {
 			case WAState.CONFLICT:
 			case WAState.TIMEOUT:
@@ -324,19 +357,16 @@ IP.init = async function () {
 				console.log('State issue detected. Restarting...');
 				await t.restartInstance();
 				break;
-
 			case WAState.UNPAIRED:
 			case WAState.UNPAIRED_IDLE:
 				console.log('Instance unpaired. Resetting...');
 				await t.resetInstance();
 				break;
-
 			case WAState.DEPRECATED_VERSION:
 				console.log('Deprecated version detected. Please update WhatsApp-web.js.');
 				break;
 		}
 	});
-
 	t.resetInstance = async function () {
 		try {
 			t.pairingCodeRequested = false;
@@ -347,7 +377,6 @@ IP.init = async function () {
 			console.error('Error restarting instance:', err);
 		}
 	};
-
 	t.restartInstance = async function () {
 		try {
 			t.pairingCodeRequested = false;
@@ -358,37 +387,72 @@ IP.init = async function () {
 			console.error('Error resetting instance:', err);
 		}
 	};
-	ROUTE('POST /api/config/' + t.phone, function (phone) {
+	ROUTE('+POST /api/config/' + t.phone, function (phone) {
 		var self = this;
 		var body = self.body;
 		t.memory_refresh(body, function () {
 			self.success();
 		});
 	});
-
-	ROUTE('GET /api/config/' + t.phone, function (phone) {
+	ROUTE('+GET /api/config/' + t.phone, function (phone) {
 		var self = this;
 		self.json(t.Data);
 	});
-
-	ROUTE('POST /api/rpc/' + t.phone, function (phone) {
+	ROUTE('+POST /api/rpc/' + t.phone, function (phone) {
 		var self = this;
 		var payload = self.body;
+		self.ws = false;
 		t.message(payload, self);
 	});
-
-	ROUTE('POST ' + t.Data.messageapi + t.phone, function () {
+	ROUTE('+POST ' + t.Data.messageapi + t.phone, function () {
 		var self = this;
-		t.sendMessage(self.body);
+		console.log(self.body);
+		t.state == 'CONNECTED' && t.sendMessage(self.body);
 		self.success();
 	});
-
-	ROUTE('POST ' + t.Data.mediaapi + t.phone, function () {
+	ROUTE('+POST ' + t.Data.mediaapi + t.phone, function () {
 		var self = this;
-		t.send_file(self.body);
+		console.log(self.body);
+		t.state == 'CONNECTED' && t.send_file(self.body);
 		self.success();
 	});
+	// Websocket server
+	ROUTE('+SOCKET /api/ws/' + t.phone, function (phone) {
+		var self = this;
+		var socket = self;
+		self.ws = true;
+		t.ws = socket;
+		self.autodestroy();
+		socket.on('open', function (client) {
+			client.phone = t.phone;
+			t.ws_clients[client.id] = client;
+		});
+		socket.on('message', function (client, msg) {
+			if (msg && msg.topic) {
+				self.client = client;
+				t.message(msg, self);
+			}
 
+			// check by msg.type
+			if(msg && msg.type) {
+				switch(msg.type) {
+					case 'text':
+						t.sendMessage(msg);
+						// replay with success
+						break;
+					case 'file':
+						t.send_file(msg);
+						break;
+				}
+				client.send({ success: true });
+			}
+			// reply with success any way
+			//client.send({ success: true });
+		});
+		socket.on('disconnect', function () {
+			console.log('Client disconnected');
+		});
+	});
 	setTimeout(function () {
 		console.log('Initializing whatsapp: ' + t.id);
 		t.logs.push({ name: 'instance_initializing', content: 'ID:' + t.id });
@@ -403,7 +467,6 @@ IP.PUB = function (topic, obj, broker) {
 	console.log('PUB: ' + topic, obj.content);
 	t.send(obj);
 };
-
 
 IP.save_session = async function() {
 	var t = this;
@@ -463,9 +526,20 @@ IP.ask = async function (number, chatid, content, type, isgroup, istag, user, gr
 		group: group
 	};
 
+
+
 	// if (t.Data.webhook) {
 	// RESTBuilder.POST(t.Data.webhook, { type: CONF.antidel ? 'message_revoke_everyone' : 'message', data: obj }).header('x-token', t.Data.token).header('token', t.Data.token).callback(NOOP);
 	// }
+
+
+	if (t.origin == 'zapwize') {
+		// send to ws_clients
+		for (var key in t.ws_clients) {
+			var client = t.ws_clients[key];
+			client.send(obj);
+		}
+	}
 };
 
 IP.sendMessage = async function (data) {
@@ -477,10 +551,10 @@ IP.send_file = async function (data) {
 	var t = this;
 	var media;
 
-	if (data.type == 'url')
-		media = await MessageMedia.fromUrl(data.content);
+	if (data.url)
+		media = await MessageMedia.fromUrl(data.url);
 	else
-		media = data.content;
+		media = new MessageMedia(data.content.base64ContentType(), data.content);
 
 	if (data.caption)
 		t.whatsapp && media && await t.whatsapp.sendMessage(data.chatid, media, { caption: data.caption });
@@ -514,11 +588,22 @@ IP.message = async function (msg, ctrl) {
 		case 'logs':
 			output.content = t.logs;
 			break;
+		case 'config':
+			output.content = t.Data;
+			break;
+		case 'memory':
+			output.content = t.memorize.data;
+			break;
+		case 'memory_refresh':
+			t.memory_refresh(msg.content);
+			output.content = 'OK';
+			break;
+		
 	}
 
 	!ctrl && t.send(output);
-	ctrl && ctrl.json(output);
-
+	ctrl && !ctrl.ws && ctrl.json(output);
+	ctrl && ctrl.ws && ctrl.client.send(output);
 };
 
 IP.save_file = async function (data, callback) {
