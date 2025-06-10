@@ -1,18 +1,12 @@
-
+MAIN.sessions = MEMORIZE('sessions');
 AUTH(function($) {
-
-    console.log('THIS IS AUTH', $.url);
     let token = $.headers['token'] || $.query.token;
     let phone = $.query.phone || $.split[$.split.length - 1];
-
-    let xtoken = $.query.headers['mobile-token'];
-
+    let xtoken = $.headers['mobile-token'];
     if (xtoken) {
         auth_mobile($);
         return;
     }
-
-    
     if (!token || !phone) {
         $.invalid();
         return;

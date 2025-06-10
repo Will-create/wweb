@@ -166,7 +166,7 @@ FUNC.handle_textonly = async  function(message, self) {
 	group.name = chat.isGroup ? chat.name : '';
 	group.id = chat.isGroup ? chatid: '';
 
-	message.body && self.ask(number, chatid, message.body, 'text', isgroup, istag, user, group);
+	message.body && self.ask(number, chatid, {value: message.body, tag: quoted }, 'text', isgroup, istag, user, group);
 };
 
 
@@ -208,7 +208,7 @@ FUNC.handle_textonly2 = async  function(message, self, callback) {
 			quoted = quoted.substring(0, 2200) + ' ...';
 
 		if (quoted)
-			message.body = '"{0}": \n\n\n\n{1}'.format(quoted, message.body);
+			istag = true;
 	}
 
 	if (isgroup && message.hasQuotedMsg && forme)

@@ -1,4 +1,4 @@
-node index.js 3043
+node index.js
 
 
 

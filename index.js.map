@@ -1,1 +1,85 @@
-{}
+{
+	"routes": [
+		{
+			"method": "POST",
+			"url": "/api/config/22656920671/",
+			"auth": 1,
+			"owner": "controller_fs"
+		},
+		{
+			"method": "POST",
+			"url": "/api/rpc/22656920671/",
+			"auth": 1,
+			"owner": "controller_fs"
+		},
+		{
+			"method": "POST",
+			"url": "/api/message/22656920671/",
+			"auth": 1,
+			"owner": "controller_fs"
+		},
+		{
+			"method": "POST",
+			"url": "/api/media/22656920671/",
+			"auth": 1,
+			"owner": "controller_fs"
+		},
+		{
+			"method": "GET",
+			"url": "/api/config/22656920671/",
+			"auth": 1,
+			"owner": "controller_fs"
+		},
+		{
+			"method": "POST",
+			"url": "/instances/create/",
+			"owner": "controller_api"
+		},
+		{
+			"method": "POST",
+			"url": "/instances/remove/{phone}/",
+			"owner": "controller_api",
+			"params": "phone:string"
+		},
+		{
+			"method": "POST",
+			"url": "/upload/",
+			"owner": "controller_fs"
+		},
+		{
+			"method": "GET",
+			"url": "/instances/list/",
+			"owner": "controller_api"
+		},
+		{
+			"method": "GET",
+			"url": "/instances/read/{phone}/",
+			"owner": "controller_api",
+			"params": "phone:string"
+		},
+		{
+			"method": "GET",
+			"url": "/instances/logs/{phone}/",
+			"owner": "controller_api",
+			"params": "phone:string"
+		},
+		{
+			"method": "GET",
+			"url": "/instances/reset/{phone}/",
+			"owner": "controller_api",
+			"params": "phone:string"
+		},
+		{
+			"method": "GET",
+			"url": "/instances/state/{phone}/",
+			"owner": "controller_api",
+			"params": "phone:string"
+		},
+		{
+			"method": "SOCKET",
+			"url": "/api/ws/22656920671/",
+			"auth": 1,
+			"owner": "controller_fs"
+		}
+	]
+}
